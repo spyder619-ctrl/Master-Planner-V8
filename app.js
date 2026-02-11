@@ -31,6 +31,8 @@ const defaultState = {
       reorder_soon: false
     }
   },
+  storageQty: { grocery: {}, supplements: {} },
+
   notes: {},
   // Optional demo videos for recipes (user-provided). Keys are recipe names.
   recipeVideos: {
@@ -95,6 +97,35 @@ function money(n){
   if(!isFinite(v)) return "";
   return v.toFixed(2);
 }
+    
+function getQty(bucket, key){
+  if(!state.storageQty) state.storageQty = { grocery:{}, supplements:{} };
+  const b = state.storageQty[bucket] || {};
+  const v = Number(b[key] ?? "");
+  return isFinite(v) ? v : 0;
+}
+
+function setQty(bucket, key, val){
+  if(!state.storageQty) state.storageQty = { grocery:{}, supplements:{} };
+  if(!state.storageQty[bucket]) state.storageQty[bucket] = {};
+  const n = Number(val);
+  state.storageQty[bucket][key] = (isFinite(n) && n >= 0) ? n : 0;
+  saveState();
+}
+
+function qtyClass(q){
+  // Low-stock threshold: 1 or less = low
+  if(q <= 0) return "qtyBadge qtyOut";
+  if(q <= 1) return "qtyBadge qtyLow";
+  if(q <= 3) return "qtyBadge qtyMed";
+  return "qtyBadge qtyOk";
+}
+
+function qtyBadge(bucket, key){
+  const q = getQty(bucket, key);
+  return `<span class="${qtyClass(q)}" title="On hand">${q}</span>`;
+}
+
 
 function buildGroceryExport(data){
   // data.grocery array, state.checks + state.groceryPrices
@@ -508,6 +539,9 @@ async function renderGrocery(){
     ${card(`
       <div class="h1">Master Grocery List</div>
       <p class="sub">Enter prices if you want; they’ll auto-total below.</p>
+      <div class="pillRow" style="margin-top:10px">
+        <a class="pill" href="#groceryStorage">Storage checklist</a>
+      </div>
       ${renderStorageChecklist("grocery")}
       ${rows}
       <div class="toolbar">
@@ -534,7 +568,7 @@ async function renderGrocery(){
   updateListTotals();
 }
 
-async async function renderSupplements(){
+async function renderSupplements(){
   const data = await getData();
   setHeader("Supplements", "Check items + (optional) enter estimated prices.");
 
@@ -563,8 +597,10 @@ async async function renderSupplements(){
     ${card(`
       <div class="h1">Supplement & Skincare List</div>
       ${renderStorageChecklist("supplements")}
-<div class="pillRow" style="margin-top:10px"><a class="pill" href="#suppStorage">Supp/Skincare Storage</a></div>
-      ${section("SUPPLEMENTS", data.supplements.SUPPLEMENTS, "supp")}
+      <div class="pillRow" style="margin-top:10px">
+        <a class="pill" href="#suppStorage">Supp/Skincare Storage</a>
+      </div>
+${section("SUPPLEMENTS", data.supplements.SUPPLEMENTS, "supp")}
       ${section("SKINCARE", data.supplements.SKINCARE, "skin")}
       <div class="toolbar">
         <button class="btn danger" id="resetSStorage">Reset storage checklist</button>
@@ -842,6 +878,51 @@ function wirePrices(bucket, totalSel){
   });
 }
 
+
+async function renderSuppStorage(){
+  const data = await getData();
+  setHeader("Supp/Skincare Storage", "Track what you have on hand.");
+
+  function buildSection(title, arr, prefix){
+    const rows = arr.map((name, idx) => {
+      const checkId = `${prefix}store:${idx}`;
+      const qtyKey = `${prefix}Qty:${idx}`;
+      const q = getQty("supplements", qtyKey);
+      return `
+        <div class="row">
+          <label class="checkRow">
+            <input type="checkbox" data-check="${checkId}" ${state.checks[checkId] ? "checked" : ""} />
+            <span class="checkLabel">${name}</span>
+          </label>
+          <div class="qtyWrap">
+            <label class="itemMeta">Qty on hand</label>
+            <input class="qtyInput ${qtyClass(q)}" type="number" min="0" step="1" data-qty-bucket="supplements" data-qty-key="${qtyKey}" value="${q}" />
+          </div>
+        </div>
+      `;
+    }).join("");
+    return `
+      <div class="h2" style="margin-top:14px">${title}</div>
+      ${rows}
+    `;
+  }
+
+  $("#app").innerHTML = `
+    ${card(`
+      <div class="h1">Supplements & Skincare Storage Checklist</div>
+      <p class="sub">Items highlight when low (≤ 1) or out (0).</p>
+      ${buildSection("SUPPLEMENTS", data.supplements.SUPPLEMENTS, "supp")}
+      ${buildSection("SKINCARE", data.supplements.SKINCARE, "skin")}
+      <div class="toolbar">
+        <a class="btn" href="#supplements">Back to Supplements</a>
+      </div>
+    `)}
+    <div class="footerSpace"></div>
+  `;
+  wireChecks();
+  wireQtyInputs();
+}
+
 function wireSuppPrices(){
   const totalEls = ["#sTotal", "#sTotalSticky"].map(sel => document.querySelector(sel)).filter(Boolean);
   $$("[data-sprice]").forEach(inp => {
@@ -856,6 +937,19 @@ function wireSuppPrices(){
   });
 }
 
+
+function wireQtyInputs(){
+  $$("[data-qty-bucket]").forEach(inp => {
+    inp.addEventListener("input", () => {
+      const bucket = inp.getAttribute("data-qty-bucket");
+      const key = inp.getAttribute("data-qty-key");
+      setQty(bucket, key, inp.value);
+      const q = getQty(bucket, key);
+      // Update classes for highlight
+      inp.className = `qtyInput ${qtyClass(q)}`;
+    });
+  });
+}
 
 async function renderMore(){
   setHeader("More", "Supplements, Meal Plan, Recipes, and Workouts.");
@@ -890,7 +984,9 @@ async function render(page, arg){
     case "schedule": return renderSchedule();
     case "day": return renderDay(decodeURIComponent(arg||""));
     case "grocery": return renderGrocery();
+    case "groceryStorage": return renderGroceryStorage();
     case "supplements": return renderSupplements();
+    case "suppStorage": return renderSuppStorage();
     case "nutrition": return renderNutrition();
     case "recipe": return renderRecipe(decodeURIComponent(arg||""));
     case "workouts": return renderWorkouts();

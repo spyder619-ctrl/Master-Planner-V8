@@ -1,4 +1,4 @@
-const CACHE_NAME = "master-planner-v12_20260211_storagepages_1770788428-r3";
+const CACHE_NAME = "master-planner-v12_20260211_storagepages_1770788428-r5";
 const ASSETS = [
   "./",
   "./index.html",

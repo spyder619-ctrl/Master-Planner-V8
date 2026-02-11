@@ -411,3 +411,44 @@ body[data-day] .row{
 .row.wk-legs .itemTitle{ color: color-mix(in srgb, var(--wk-legs) 70%, #e6f0ff); }
 .row.wk-chest .itemTitle{ color: color-mix(in srgb, var(--wk-chest) 70%, #e6f0ff); }
 .row.wk-arms .itemTitle{ color: color-mix(in srgb, var(--wk-arms) 70%, #e6f0ff); }
+
+/* Quantity badges + low stock highlighting */
+.qtyBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:28px;
+  height:20px;
+  padding:0 8px;
+  border-radius:999px;
+  font-size:12px;
+  line-height:20px;
+  margin-left:8px;
+  border:1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.06);
+}
+
+.qtyOk{}
+.qtyMed{
+  border-color: rgba(255,255,255,0.24);
+}
+.qtyLow{
+  border-color: rgba(255, 200, 0, 0.55);
+  box-shadow: 0 0 10px rgba(255, 200, 0, 0.18);
+}
+.qtyOut{
+  border-color: rgba(255, 80, 80, 0.60);
+  box-shadow: 0 0 12px rgba(255, 80, 80, 0.18);
+}
+
+.qtyWrap{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  min-width:120px;
+}
+
+.qtyInput{
+  width:120px;
+  max-width:40vw;
+}
